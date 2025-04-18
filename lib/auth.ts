@@ -33,7 +33,7 @@ export async function signUp(
 
   // If auth signup was successful, create a record in our users table
   if (authData.user) {
-    const { error: profileError } = await supabase.from("users").insert([
+    const { error: profileError } = await supabase.from("api.users").insert([
       {
         id: authData.user.id,
         username,
@@ -70,9 +70,14 @@ export async function updatePassword(password: string) {
   return { data, error };
 }
 
-export async function getCurrentUser(): Promise<{ user: User | null; userData: any }> {
-  const { data: { user } } = await supabase.auth.getUser();
-  
+export async function getCurrentUser(): Promise<{
+  user: User | null;
+  userData: any;
+}> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   let userData = null;
   if (user) {
     const { data } = await supabase
@@ -80,10 +85,10 @@ export async function getCurrentUser(): Promise<{ user: User | null; userData: a
       .select("*")
       .eq("id", user.id)
       .single();
-      
+
     userData = data;
   }
-  
+
   return { user, userData };
 }
 
