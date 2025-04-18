@@ -5,6 +5,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+// Import your Supabase client and types
+import { supabase } from "@/lib/supabaseClient";
+import { User, Session } from "@supabase/supabase-js";
 
 export default function Page() {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,17 +21,150 @@ export default function Page() {
 
   // Error states
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Refs for form submission
   const formRef = useRef(null);
 
-  function LoginSuccess() {
-    router.push("/");
-  }
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
 
-  function SignupSuccess() {
-    router.push("/");
-  }
+      // Properly handle the type with optional chaining
+      if (data?.session) {
+        router.push("/");
+      }
+    };
+
+    checkSession();
+  }, [router]);
+
+  const handleLogin = async () => {
+    // Reset error
+    setError("");
+    setLoading(true);
+
+    try {
+      // Simple validation
+      if (!email) {
+        setError("Email is required");
+        return;
+      }
+
+      if (!password) {
+        setError("Password is required");
+        return;
+      }
+
+      // Use Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.session) {
+        router.push("/");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async () => {
+    // Reset error
+    setError("");
+    setLoading(true);
+
+    try {
+      // Validation
+      if (!username) {
+        setError("Username is required");
+        return;
+      }
+
+      if (!email) {
+        setError("Email is required");
+        return;
+      }
+
+      if (!validateEmail(email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+
+      if (!password) {
+        setError("Password is required");
+        return;
+      }
+
+      if (password.length < 8) {
+        setError("Password must be at least 8 characters");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setError("Passwords do not match");
+        return;
+      }
+
+      // Use Supabase for signup
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // After signup, also create a user profile in your profiles table
+      if (data.user) {
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: data.user.id,
+          username,
+          email,
+          created_at: new Date(),
+        });
+
+        if (profileError) {
+          throw profileError;
+        }
+      }
+
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message || "Failed to sign up");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLogin) {
+      handleLogin();
+    } else {
+      handleSignup();
+    }
+  };
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
@@ -38,90 +174,6 @@ export default function Page() {
     setPassword("");
     setConfirmPassword("");
     setError("");
-  };
-
-  const validateEmail = (email: string) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
-
-  const handleLogin = () => {
-    // Reset error
-    setError("");
-
-    // Simple validation
-    if (!username) {
-      setError("Username or email is required");
-      return;
-    }
-
-    if (!password) {
-      setError("Password is required");
-      return;
-    }
-
-    // Mock login check - implement database checking later
-    if (username !== "demo" && username !== "demo@example.com") {
-      setError("Username not found");
-      return;
-    }
-
-    if (password !== "password123") {
-      setError("Incorrect password");
-      return;
-    }
-
-    // If we get here, login was successful
-    LoginSuccess();
-  };
-
-  const handleSignup = () => {
-    // Reset error
-    setError("");
-
-    // Validation
-    if (!username) {
-      setError("Username is required");
-      return;
-    }
-
-    if (!email) {
-      setError("Email is required");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    if (!password) {
-      setError("Password is required");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    // If we get here, signup was successful. Implement adding account into database
-    SignupSuccess();
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: any) => {
-    e.preventDefault();
-    if (isLogin) {
-      handleLogin();
-    } else {
-      handleSignup();
-    }
   };
 
   return (
@@ -207,10 +259,10 @@ export default function Page() {
               <form onSubmit={handleSubmit} ref={formRef}>
                 <div className="flex flex-col gap-4">
                   <TextForm
-                    placeholder="Enter your username or email"
-                    type="text"
-                    value={username}
-                    onChange={(value) => setUsername(value)}
+                    placeholder="Enter your email"
+                    type="email"
+                    value={email}
+                    onChange={(value) => setEmail(value)}
                     className="w-full"
                   />
                   <TextForm
@@ -236,10 +288,11 @@ export default function Page() {
                     </h2>
                   </a>
                   <Button
-                    text="Log in"
+                    text={loading ? "Logging in..." : "Log in"}
                     onClick={handleLogin}
                     className="bg-blue-500 text-white py-2 rounded-md w-full"
                     type="submit"
+                    disabled={loading}
                   />
                 </div>
               </form>
@@ -307,10 +360,11 @@ export default function Page() {
                     onChange={(value) => setConfirmPassword(value)}
                   />
                   <Button
-                    text="Sign Up"
+                    text={loading ? "Signing up..." : "Sign Up"}
                     onClick={handleSignup}
                     className="bg-blue-500 text-white py-2 rounded-md w-full"
                     type="submit"
+                    disabled={loading}
                   />
                 </div>
               </form>
