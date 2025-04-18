@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { User } from "@supabase/supabase-js"; // Import the User type from Supabase
 
 // User authentication functions
 export async function signIn(email: string, password: string) {
@@ -69,15 +70,25 @@ export async function updatePassword(password: string) {
   return { data, error };
 }
 
-export async function getCurrentUser() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+export async function getCurrentUser(): Promise<{ user: User | null; userData: any }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  let userData = null;
+  if (user) {
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+      
+    userData = data;
+  }
+  
+  return { user, userData };
 }
 
 export async function getUserProfile() {
-  const user = await getCurrentUser();
+  const { user } = await getCurrentUser(); // Destructure to get the user directly
 
   if (!user) return null;
 

@@ -5,9 +5,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-// Import your Supabase client and types
 import { supabase } from "@/lib/supabaseClient";
-import { User, Session } from "@supabase/supabase-js";
 
 export default function Page() {
   const [isLogin, setIsLogin] = useState(true);
@@ -273,13 +271,13 @@ export default function Page() {
                     className="w-full"
                   />
                   <a
-                    href="#"
-                    className="text-right"
+                    href="/forgot-password"
+                    className="text-left"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        // Handle forgot password action
+                        router.push("/forgot-password")
                       }
                     }}
                   >
