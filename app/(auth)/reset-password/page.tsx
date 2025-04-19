@@ -1,42 +1,27 @@
 "use client";
 import TextForm from "@/components/UI/TextForm";
 import Button from "@/components/UI/Button";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabaseClient"; // Assuming you have this set up
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Ref for form submission
   const formRef = useRef(null);
-
-  // When the page loads, check if there's a valid recovery session
-  useEffect(() => {
-    const checkSession = async () => {
-      // The auth hash will be automatically handled by Supabase client
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error || !data.session?.user) {
-        setError("Invalid or expired recovery link. Please request a new password reset.");
-      }
-    };
-    
-    checkSession();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+
     // Validation
     if (!password) {
       setError("Password is required");
@@ -56,24 +41,17 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Update the password using Supabase
-      const { error } = await supabase.auth.updateUser({ 
-        password: password 
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to reset password');
-      }
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       setSuccessMessage("Password has been reset successfully.");
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        router.push('/login');
+        router.push("/login");
       }, 2000);
-      
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +117,7 @@ export default function ResetPasswordPage() {
               </div>
             )}
 
-            {!error && !successMessage && (
+            {!successMessage && (
               <form onSubmit={handleSubmit} ref={formRef}>
                 <div className="flex flex-col gap-4">
                   <TextForm
@@ -171,7 +149,7 @@ export default function ResetPasswordPage() {
               <div className="flex flex-col gap-4 mt-4">
                 <Button
                   text="Request New Reset Link"
-                  onClick={() => router.push('/forgot-password')}
+                  onClick={() => router.push("/forgot-password")}
                   className="bg-blue-500 text-white py-2 rounded-md w-full"
                 />
               </div>

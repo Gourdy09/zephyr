@@ -3,12 +3,10 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useState,
+  useEffect,
   ReactNode,
 } from "react";
-import { getCurrentUser, signOut } from "@/lib/auth";
-import { supabase } from "@/lib/supabaseClient";
 
 // Define the types for our context
 type User = {
@@ -40,6 +38,19 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
+// Mock user data for demo purposes
+const mockUser = {
+  id: "user-123",
+  email: "demo@example.com",
+};
+
+const mockUserData = {
+  id: "user-123",
+  username: "demouser",
+  email: "demo@example.com",
+  created_at: new Date().toISOString(),
+};
+
 // Create a provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(null);
@@ -50,9 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     setLoading(true);
     try {
-      const { user, userData } = await getCurrentUser();
-      setUser(user);
-      setUserData(userData);
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // For demo, let's assume user is not logged in by default
+      // In a real app, you would check local storage or cookies
+      setUser(null);
+      setUserData(null);
     } catch (error) {
       console.error("Error refreshing user:", error);
       setUser(null);
@@ -64,36 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Function to handle logout
   const logout = async () => {
-    const { error } = await signOut();
-    if (!error) {
-      setUser(null);
-      setUserData(null);
-    } else {
-      console.error("Error signing out:", error);
-    }
+    // Simulate logout process
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    setUser(null);
+    setUserData(null);
+    return { error: null };
   };
 
-  // Listen for authentication state changes
+  // Simulate authentication state changes
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        await refreshUser();
-      } else {
-        setUser(null);
-        setUserData(null);
-        setLoading(false);
-      }
-    });
-
     // Initial fetch of user
     refreshUser();
-
-    // Cleanup subscription on unmount
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   return (

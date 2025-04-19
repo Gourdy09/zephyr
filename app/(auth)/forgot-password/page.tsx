@@ -5,7 +5,6 @@ import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabaseClient"; // Assuming you have this set up
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -13,7 +12,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Ref for form submission
   const formRef = useRef(null);
 
@@ -26,7 +25,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
-    
+
     // Validate email
     if (!email) {
       setError("Email is required");
@@ -41,19 +40,14 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Using Supabase to send password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/reset-password`,
-      });
+      // Simulate API call with setTimeout
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (error) {
-        throw new Error(error.message || 'Failed to send reset email');
-      }
-
+      // Show success message
       setSuccessMessage("Password reset link has been sent to your email.");
       setEmail("");
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }

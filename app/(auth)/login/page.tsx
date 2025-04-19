@@ -1,11 +1,10 @@
 "use client";
 import TextForm from "@/components/UI/TextForm";
 import Button from "@/components/UI/Button";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabaseClient";
 
 export default function Page() {
   const [isLogin, setIsLogin] = useState(true);
@@ -24,20 +23,6 @@ export default function Page() {
   // Refs for form submission
   const formRef = useRef(null);
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-
-      // Properly handle the type with optional chaining
-      if (data?.session) {
-        router.push("/");
-      }
-    };
-
-    checkSession();
-  }, [router]);
-
   const handleLogin = async () => {
     // Reset error
     setError("");
@@ -55,21 +40,13 @@ export default function Page() {
         return;
       }
 
-      // Use Supabase authentication
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.session) {
-        router.push("/");
-      }
+      // Redirect to home after successful login
+      router.push("/");
     } catch (err: any) {
-      setError(err.message || "Failed to login");
+      setError("Failed to login");
     } finally {
       setLoading(false);
     }
@@ -112,38 +89,13 @@ export default function Page() {
         return;
       }
 
-      // Use Supabase for signup
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
-          },
-        },
-      });
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (error) {
-        throw error;
-      }
-
-      // After signup, also create a user profile in your profiles table
-      if (data.user) {
-        const { error: profileError } = await supabase.from("profiles").insert({
-          id: data.user.id,
-          username,
-          email,
-          created_at: new Date(),
-        });
-
-        if (profileError) {
-          throw profileError;
-        }
-      }
-
+      // Redirect to home after successful signup
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Failed to sign up");
+      setError("Failed to sign up");
     } finally {
       setLoading(false);
     }
@@ -277,7 +229,7 @@ export default function Page() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        router.push("/forgot-password")
+                        router.push("/forgot-password");
                       }
                     }}
                   >
