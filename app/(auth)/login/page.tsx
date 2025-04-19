@@ -32,11 +32,13 @@ export default function Page() {
       // Simple validation
       if (!email) {
         setError("Email is required");
+        setLoading(false);
         return;
       }
 
       if (!password) {
         setError("Password is required");
+        setLoading(false);
         return;
       }
 
@@ -61,31 +63,37 @@ export default function Page() {
       // Validation
       if (!username) {
         setError("Username is required");
+        setLoading(false);
         return;
       }
 
       if (!email) {
         setError("Email is required");
+        setLoading(false);
         return;
       }
 
       if (!validateEmail(email)) {
         setError("Please enter a valid email address");
+        setLoading(false);
         return;
       }
 
       if (!password) {
         setError("Password is required");
+        setLoading(false);
         return;
       }
 
       if (password.length < 8) {
         setError("Password must be at least 8 characters");
+        setLoading(false);
         return;
       }
 
       if (password !== confirmPassword) {
         setError("Passwords do not match");
+        setLoading(false);
         return;
       }
 

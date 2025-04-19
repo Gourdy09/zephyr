@@ -1,18 +1,21 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
-  const { user, userData, loading, logout } = useAuth();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogin = () => {
+    router.push("/login");
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
     router.push("/login");
   };
 
@@ -47,7 +50,7 @@ export default function Navbar() {
             Leaderboard
           </Link>
 
-          {!loading && user ? (
+          {isLoggedIn ? (
             <>
               <Link
                 href="/profile"
@@ -69,18 +72,18 @@ export default function Navbar() {
               </button>
               <div className="flex items-center ml-4">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
-                  {userData?.username.charAt(0).toUpperCase()}
+                  D
                 </div>
-                <span className="ml-2">{userData?.username}</span>
+                <span className="ml-2">DemoUser</span>
               </div>
             </>
           ) : (
-            <Link
-              href="/login"
+            <button
+              onClick={handleLogin}
               className="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
             >
               Login
-            </Link>
+            </button>
           )}
         </div>
 
@@ -144,7 +147,7 @@ export default function Navbar() {
               Leaderboard
             </Link>
 
-            {!loading && user ? (
+            {isLoggedIn ? (
               <>
                 <Link
                   href="/profile"
@@ -171,9 +174,9 @@ export default function Navbar() {
                 </button>
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
-                    {userData?.username.charAt(0).toUpperCase()}
+                    D
                   </div>
-                  <span className="ml-2">{userData?.username}</span>
+                  <span className="ml-2">DemoUser</span>
                 </div>
               </>
             ) : (
