@@ -5,10 +5,11 @@ import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import supabase from "@/lib/supabaseClient";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,28 +27,54 @@ export default function ForgotPasswordPage() {
     setError("");
     setSuccessMessage("");
 
-    // Validate email
-    if (!email) {
-      setError("Email is required");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
+    // Validate input
+    if (!identifier) {
+      setError("Email or username is required");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Simulate API call with setTimeout
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Determine if the identifier is an email or username
+      const isEmail = validateEmail(identifier);
+      let emailToReset = identifier;
+
+      // If it's a username, we need to find the associated email
+      if (!isEmail) {
+        // Query the users table to find the email associated with this username
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("email")
+          .eq("username", identifier)
+          .single();
+
+        if (userError || !userData) {
+          setError(`No account found with username: ${identifier}`);
+          setIsLoading(false);
+          return;
+        }
+
+        emailToReset = userData.email;
+      }
+
+      // Send password reset email via Supabase
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        emailToReset,
+        {
+          redirectTo: `${window.location.origin}/auth/reset-password`,
+        }
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
 
       // Show success message
       setSuccessMessage("Password reset link has been sent to your email.");
-      setEmail("");
+      setIdentifier("");
     } catch (err: any) {
-      setError("Something went wrong. Please try again.");
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -116,10 +143,10 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleSubmit} ref={formRef}>
               <div className="flex flex-col gap-4">
                 <TextForm
-                  placeholder="Enter your email"
-                  type="email"
-                  value={email}
-                  onChange={(value) => setEmail(value)}
+                  placeholder="Enter your email or username"
+                  type="text"
+                  value={identifier}
+                  onChange={(value) => setIdentifier(value)}
                   className="w-full"
                 />
                 <Button

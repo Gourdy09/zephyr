@@ -5,6 +5,7 @@ import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import supabase from "@/lib/supabaseClient";
 
 export default function Page() {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +16,7 @@ export default function Page() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState(""); // This will store either email or username
 
   // Error states
   const [error, setError] = useState("");
@@ -30,8 +32,8 @@ export default function Page() {
 
     try {
       // Simple validation
-      if (!email) {
-        setError("Email is required");
+      if (!loginIdentifier) {
+        setError("Email or username is required");
         setLoading(false);
         return;
       }
@@ -42,13 +44,101 @@ export default function Page() {
         return;
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Determine if the identifier is an email or username
+      const isEmail = loginIdentifier.includes("@");
+
+      console.log(
+        `Attempting login with ${isEmail ? "email" : "username"}:`,
+        loginIdentifier
+      );
+
+      let authData, authError;
+
+      if (isEmail) {
+        // Login with email
+        ({ data: authData, error: authError } =
+          await supabase.auth.signInWithPassword({
+            email: loginIdentifier,
+            password,
+          }));
+      } else {
+        // Login with username - First find the user with this username
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("email")
+          .eq("username", loginIdentifier)
+          .single();
+
+        if (userError || !userData) {
+          console.error("Error finding user by username:", userError);
+          setError("Username not found");
+          setLoading(false);
+          return;
+        }
+
+        // Now login with the found email
+        ({ data: authData, error: authError } =
+          await supabase.auth.signInWithPassword({
+            email: userData.email,
+            password,
+          }));
+      }
+
+      if (authError) {
+        console.error("Auth error during login:", authError);
+        setError(authError.message || "Invalid login credentials");
+        setLoading(false);
+        return;
+      }
+
+      if (!authData?.user) {
+        setError("User not found");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Auth successful, user ID:", authData.user.id);
+
+      // Fetch the user data from users table
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_uid", authData.user.id)
+        .single();
+
+      console.log("User profile fetch result:", { userData, userError });
+
+      if (userError || !userData) {
+        console.error("Error fetching user data:", userError);
+
+        // Sign out the user since we can't find their profile
+        await supabase.auth.signOut();
+
+        setError("User profile not found. Please sign up first.");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Login successful, user data:", userData);
+
+      // Store user data in local storage
+      localStorage.setItem("user", JSON.stringify(userData));
 
       // Redirect to home after successful login
-      router.push("/");
-    } catch (err: any) {
-      setError("Failed to login");
+      try {
+        router.push("/");
+      } catch (routerError) {
+        console.log("Router navigation error:", routerError);
+        // The login was still successful, so we can just ignore this error
+        window.location.href = "/"; // Fallback navigation method
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(
+        `Failed to login: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     } finally {
       setLoading(false);
     }
@@ -97,13 +187,99 @@ export default function Page() {
         return;
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Check if username already exists
+      const { data: existingUser, error: usernameCheckError } = await supabase
+        .from("users")
+        .select("username")
+        .eq("username", username)
+        .single();
+
+      if (existingUser) {
+        setError("Username already taken");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Starting signup process...");
+
+      // First create the auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: username, // Store username in auth.users metadata too
+          },
+        },
+      });
+
+      console.log("Auth signup response:", authData, authError);
+
+      if (authError) {
+        console.error("Auth error:", authError);
+        setError(authError.message || "Error creating account");
+        return;
+      }
+
+      if (!authData?.user) {
+        setError("Failed to create user");
+        return;
+      }
+
+      console.log("Auth user created successfully:", authData.user.id);
+
+      // Create user profile in public.users table
+      const userData = {
+        auth_uid: authData.user.id,
+        username: username,
+        email: email, // Store email in public.users table as requested
+      };
+
+      console.log("Attempting to insert user profile:", userData);
+
+      // Insert into public.users table
+      const { data: profileData, error: profileError } = await supabase
+        .from("users")
+        .insert([userData])
+        .select();
+
+      console.log("Profile creation response:", { profileData, profileError });
+
+      if (profileError) {
+        console.error("Error creating user profile:", profileError);
+        console.error("Error details:", JSON.stringify(profileError, null, 2));
+
+        // Clean up the auth user that was created
+        await supabase.auth.signOut();
+
+        setError(
+          `Failed to create profile: ${profileError.message || "Unknown error"}`
+        );
+        return;
+      }
+
+      console.log("User profile created successfully:", profileData);
+
+      // Store user data in local storage for app use
+      if (profileData && profileData[0]) {
+        localStorage.setItem("user", JSON.stringify(profileData[0]));
+      }
 
       // Redirect to home after successful signup
-      router.push("/");
-    } catch (err: any) {
-      setError("Failed to sign up");
+      try {
+        router.push("/");
+      } catch (routerError) {
+        console.log("Router navigation error:", routerError);
+        // The signup was still successful, so we can just ignore this error
+        window.location.href = "/"; // Fallback navigation method
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      setError(
+        `Failed to sign up: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     } finally {
       setLoading(false);
     }
@@ -129,6 +305,7 @@ export default function Page() {
     // Clear form fields and errors when switching
     setUsername("");
     setEmail("");
+    setLoginIdentifier("");
     setPassword("");
     setConfirmPassword("");
     setError("");
@@ -217,10 +394,10 @@ export default function Page() {
               <form onSubmit={handleSubmit} ref={formRef}>
                 <div className="flex flex-col gap-4">
                   <TextForm
-                    placeholder="Enter your email"
-                    type="email"
-                    value={email}
-                    onChange={(value) => setEmail(value)}
+                    placeholder="Enter your email or username"
+                    type="text"
+                    value={loginIdentifier}
+                    onChange={(value) => setLoginIdentifier(value)}
                     className="w-full"
                   />
                   <TextForm
